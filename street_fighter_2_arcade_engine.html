@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Street Fighter 2 - Arcade Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+        .arcade-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        .arcade-screen {
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.85), 0 0 30px rgba(59, 130, 246, 0.25);
+        }
+        .scanline {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.04),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.04)
+            );
+            background-size: 100% 3px, 6px 100%;
+        }
+        .character-card:hover {
+            transform: translateY(-6px);
+        }
+        .fighter-sprite-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            will-change: transform, width, height;
+            image-rendering: pixelated;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between">
+
+    <!-- MAIN VIEWPORT -->
+    <div id="app" class="relative w-full h-full flex flex-col">
+
+        <!-- 1. START MENU SCREEN -->
+        <div id="screen-menu" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-blue-950 to-slate-950 p-6">
+            <div class="text-center mb-10">
+                <span class="arcade-font text-xs md:text-sm text-yellow-400 tracking-widest uppercase block mb-3">CAPCOM STYLE TRIBUTE</span>
+                <h1 class="arcade-font text-3xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-orange-500 to-red-600 drop-shadow-[0_5px_5px_rgba(0,0,0,0.9)] leading-snug">
+                    STREET FIGHTER<br>JS EDITION
+                </h1>
+            </div>
+
+            <div class="flex flex-col gap-4 w-full max-w-md">
+                <button onclick="GameApp.startMode('pve')" class="arcade-font bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white py-4 px-6 rounded-xl border-2 border-yellow-400 shadow-lg transition transform hover:scale-105 text-sm md:text-base">
+                    1 JOGADOR (VS CPU)
+                </button>
+                <button onclick="GameApp.startMode('pvp')" class="arcade-font bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-4 px-6 rounded-xl border-2 border-cyan-400 shadow-lg transition transform hover:scale-105 text-sm md:text-base">
+                    2 JOGADORES (LOCAL)
+                </button>
+                <button onclick="GameApp.toggleControlsModal(true)" class="arcade-font bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 px-6 rounded-xl border border-slate-600 shadow transition text-xs">
+                    COMANDOS & GOLPES (18 ATAQUES)
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. CHARACTER & STAGE SELECTION SCREEN -->
+        <div id="screen-charselect" class="absolute inset-0 z-40 hidden flex-col items-center justify-center bg-slate-950 p-4 md:p-6 overflow-y-auto">
+            <h2 id="charselect-title" class="arcade-font text-xl md:text-3xl text-yellow-400 mb-4 text-center">SELECIONE SEU LUTADOR</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-5 max-w-4xl w-full">
+                <!-- Fighter 1: Ryu -->
+                <div onclick="GameApp.selectCharacter('ryu')" id="card-ryu" class="character-card bg-slate-900 border-4 border-slate-700 hover:border-yellow-400 cursor-pointer rounded-2xl p-5 flex flex-col items-center transition shadow-xl">
+                    <div class="w-28 h-36 bg-gradient-to-t from-red-900 to-slate-800 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden border border-red-500/30">
+                        <img src="https://placehold.co/112x144/991b1b/ffffff?text=RYU+PORTRAIT" alt="Ryu" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 w-full bg-black/70 text-center py-1 text-[10px] text-yellow-300 font-bold">SHOTO / HADOKEN</div>
+                    </div>
+                    <span class="arcade-font text-lg text-white mb-1">RYU</span>
+                    <p class="text-xs text-slate-400 text-center">Equilibrado: Hadoken (Projétil) e Tatsumaki (GIF)</p>
+                </div>
+
+                <!-- Fighter 2: Ken -->
+                <div onclick="GameApp.selectCharacter('ken')" id="card-ken" class="character-card bg-slate-900 border-4 border-slate-700 hover:border-yellow-400 cursor-pointer rounded-2xl p-5 flex flex-col items-center transition shadow-xl">
+                    <div class="w-28 h-36 bg-gradient-to-t from-orange-900 to-slate-800 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden border border-orange-500/30">
+                        <img src="https://placehold.co/112x144/c2410c/ffffff?text=KEN+PORTRAIT" alt="Ken" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 w-full bg-black/70 text-center py-1 text-[10px] text-yellow-300 font-bold">FIRE STRIKER</div>
+                    </div>
+                    <span class="arcade-font text-lg text-white mb-1">KEN</span>
+                    <p class="text-xs text-slate-400 text-center">Ofensivo: Invoca Pilar de Fogo (Golpeador) e Shoryuken</p>
+                </div>
+
+                <!-- Fighter 3: Chun-Li -->
+                <div onclick="GameApp.selectCharacter('chunli')" id="card-chunli" class="character-card bg-slate-900 border-4 border-slate-700 hover:border-yellow-400 cursor-pointer rounded-2xl p-5 flex flex-col items-center transition shadow-xl">
+                    <div class="w-28 h-36 bg-gradient-to-t from-cyan-900 to-slate-800 rounded-xl mb-4 flex items-center justify-center relative overflow-hidden border border-cyan-500/30">
+                        <img src="https://placehold.co/112x144/164e63/ffffff?text=CHUN-LI+PORTRAIT" alt="Chun-Li" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 w-full bg-black/70 text-center py-1 text-[10px] text-yellow-300 font-bold">KICKS & WALLS</div>
+                    </div>
+                    <span class="arcade-font text-lg text-white mb-1">CHUN-LI</span>
+                    <p class="text-xs text-slate-400 text-center">Ágil: Chutes rápidos e Parede de Bloqueio (Striker)</p>
+                </div>
+            </div>
+
+            <!-- STAGE BACKGROUND SELECTOR -->
+            <div class="w-full max-w-4xl mb-5 bg-slate-900/90 border border-blue-500/40 rounded-2xl p-4">
+                <p class="arcade-font text-[10px] md:text-xs text-cyan-400 mb-3 text-center">CENÁRIO DA LUTA (BACKGROUND)</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="stage-selector-grid">
+                    <button onclick="GameApp.selectStage('suzaku')" id="stage-btn-suzaku" class="stage-btn border-2 border-yellow-400 bg-slate-800 rounded-xl p-2 flex flex-col items-center transition">
+                        <img src="https://placehold.co/240x90/7f1d1d/fde047?text=SUZAKU+CASTLE" alt="Suzaku Castle" class="w-full h-12 object-cover rounded-lg mb-1">
+                        <span class="arcade-font text-[9px] text-yellow-300">SUZAKU CASTLE</span>
+                    </button>
+                    <button onclick="GameApp.selectStage('harbor')" id="stage-btn-harbor" class="stage-btn border-2 border-slate-700 hover:border-blue-400 bg-slate-800 rounded-xl p-2 flex flex-col items-center transition">
+                        <img src="https://placehold.co/240x90/1e3a8a/93c5fd?text=BATTLE+HARBOR" alt="Battle Harbor" class="w-full h-12 object-cover rounded-lg mb-1">
+                        <span class="arcade-font text-[9px] text-slate-300">BATTLE HARBOR</span>
+                    </button>
+                    <button onclick="GameApp.selectStage('china')" id="stage-btn-china" class="stage-btn border-2 border-slate-700 hover:border-blue-400 bg-slate-800 rounded-xl p-2 flex flex-col items-center transition">
+                        <img src="https://placehold.co/240x90/065f46/6ee7b7?text=BEIJING+MARKET" alt="Beijing Market" class="w-full h-12 object-cover rounded-lg mb-1">
+                        <span class="arcade-font text-[9px] text-slate-300">BEIJING STREET</span>
+                    </button>
+                    <button onclick="GameApp.selectStage('cyber')" id="stage-btn-cyber" class="stage-btn border-2 border-slate-700 hover:border-blue-400 bg-slate-800 rounded-xl p-2 flex flex-col items-center transition">
+                        <img src="https://placehold.co/240x90/311042/e879f9?text=NEON+ARENA" alt="Neon Arena" class="w-full h-12 object-cover rounded-lg mb-1">
+                        <span class="arcade-font text-[9px] text-slate-300">NEON ARENA</span>
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="GameApp.backToMenu()" class="arcade-font bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-3 rounded-xl border border-slate-600 text-xs">
+                VOLTAR AO MENU
+            </button>
+        </div>
+
+        <!-- 3. BATTLE SCREEN -->
+        <div id="screen-battle" class="absolute inset-0 z-30 hidden flex-col justify-between bg-slate-900 select-none">
+            
+            <!-- HUD TOP BAR -->
+            <div class="w-full bg-slate-950/90 border-b-2 border-blue-600/40 p-3 md:p-4 flex justify-between items-center z-20 shadow-lg shrink-0">
+                <!-- Player 1 Health & Info -->
+                <div class="flex-1 flex flex-col">
+                    <div class="flex justify-between items-end mb-1">
+                        <span id="p1-name" class="arcade-font text-xs md:text-base text-yellow-400">RYU</span>
+                        <span id="p1-state-badge" class="text-[10px] bg-blue-900/80 text-blue-200 px-2 py-0.5 rounded font-mono">IDLE</span>
+                    </div>
+                    <div class="w-full h-5 md:h-6 bg-red-950 border-2 border-yellow-500 rounded-md overflow-hidden p-0.5">
+                        <div id="p1-hp-bar" class="h-full bg-gradient-to-r from-yellow-400 to-green-400 transition-all duration-100 rounded-sm" style="width: 100%;"></div>
+                    </div>
+                    <div id="p1-cooldown-indicator" class="text-[10px] text-orange-400 mt-1 h-3 font-mono"></div>
+                </div>
+
+                <!-- Timer & KO Center -->
+                <div class="mx-4 md:mx-8 flex flex-col items-center justify-center">
+                    <span class="arcade-font text-[10px] text-slate-400">TIME</span>
+                    <div id="battle-timer" class="arcade-font text-2xl md:text-4xl text-white drop-shadow-[0_2px_4px_rgba(239,68,68,0.8)]">99</div>
+                </div>
+
+                <!-- Player 2 Health & Info -->
+                <div class="flex-1 flex flex-col items-end">
+                    <div class="flex justify-between items-end w-full mb-1">
+                        <span id="p2-state-badge" class="text-[10px] bg-red-900/80 text-red-200 px-2 py-0.5 rounded font-mono">IDLE</span>
+                        <span id="p2-name" class="arcade-font text-xs md:text-base text-yellow-400">KEN</span>
+                    </div>
+                    <div class="w-full h-5 md:h-6 bg-red-950 border-2 border-yellow-500 rounded-md overflow-hidden p-0.5 flex justify-end">
+                        <div id="p2-hp-bar" class="h-full bg-gradient-to-l from-yellow-400 to-green-400 transition-all duration-100 rounded-sm" style="width: 100%;"></div>
+                    </div>
+                    <div id="p2-cooldown-indicator" class="text-[10px] text-orange-400 mt-1 h-3 font-mono"></div>
+                </div>
+            </div>
+
+            <!-- CANVAS STAGE AREA -->
+            <div id="stage-container" class="flex-1 w-full h-full min-h-0 relative overflow-hidden arcade-screen bg-slate-900 flex items-end">
+                <!-- Stage Background Image Layer -->
+                <img id="stage-bg-img" src="" alt="Stage Background" class="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none opacity-85">
+
+                <!-- Scanlines Overlay -->
+                <div class="absolute inset-0 scanline pointer-events-none z-20 opacity-50"></div>
+                
+                <!-- Sprite DOM Layer (Renders PNG/GIF Placeholders accurately with animation resets) -->
+                <div id="sprite-layer" class="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+                    <img id="p1-sprite" class="fighter-sprite-img" src="" alt="P1 Sprite">
+                    <img id="p2-sprite" class="fighter-sprite-img" src="" alt="P2 Sprite">
+                </div>
+
+                <!-- Round Banner Announcement -->
+                <div id="round-banner" class="absolute inset-0 flex items-center justify-center pointer-events-none z-30 opacity-0 transition-opacity duration-300">
+                    <span id="round-banner-text" class="arcade-font text-3xl md:text-6xl text-yellow-400 drop-shadow-[0_6px_6px_rgba(0,0,0,1)]">FIGHT!</span>
+                </div>
+
+                <!-- Canvas Game Area (Renders Stage, Projectiles, Strikers & Debug Boxes) -->
+                <canvas id="gameCanvas" class="w-full h-full block z-15 relative"></canvas>
+            </div>
+
+            <!-- CONTROLS & DEBUG FOOTER -->
+            <div class="bg-slate-950 border-t border-slate-800 px-4 py-2 flex flex-wrap justify-between items-center text-[11px] text-slate-400 gap-2 shrink-0">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span><strong class="text-yellow-400">P1:</strong> WASD (Mover/Pular/Abaixar/Defender) | <strong class="text-cyan-400">Golpes:</strong> U, I, O (Socos) / J, K, L (Chutes)</span>
+                    <span class="hidden lg:inline text-slate-600">|</span>
+                    <span class="hidden lg:inline"><strong class="text-orange-400">Especiais:</strong> O = Projétil | L = Golpeador (Striker) | I / K = GIF Lock</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="GameEngine.toggleDebug()" id="btn-debug-toggle" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded border border-slate-600 font-mono text-xs">
+                        DEBUG BOXES [0]: OFF
+                    </button>
+                    <button onclick="GameApp.backToMenu()" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-700 text-xs">
+                        SAIR
+                    </button>
+                </div>
+            </div>
+
+            <!-- DEBUG BOX EDITOR PANEL -->
+            <div id="debug-panel" class="hidden absolute bottom-12 right-4 z-40 bg-slate-900/95 border-2 border-cyan-500 rounded-xl p-4 w-80 shadow-2xl text-xs">
+                <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+                    <span class="arcade-font text-[10px] text-cyan-400">DEBUG: HIT & DAMAGE BOXES</span>
+                    <button onclick="GameEngine.toggleDebug()" class="text-slate-400 hover:text-white font-bold">✕</button>
+                </div>
+                <p class="text-[10px] text-slate-300 mb-3">
+                    <span class="inline-block w-2.5 h-2.5 bg-blue-500/60 border border-blue-400 mr-1"></span> Damage-Box (Hurtbox / Alvo)<br>
+                    <span class="inline-block w-2.5 h-2.5 bg-red-500/60 border border-red-400 mr-1"></span> Hit-Box (Área de Ataque)
+                </p>
+                <div class="space-y-2">
+                    <div>
+                        <label class="block text-slate-400 text-[10px]">Largura Hit-Box Ataque P1 (px):</label>
+                        <input type="range" id="dbg-p1-hitw" min="40" max="180" value="80" oninput="GameEngine.updateDebugHitbox(this.value)" class="w-full accent-cyan-400">
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded font-mono text-[10px] text-green-400" id="dbg-readout">
+                        P1 Pos: (0,0) | State: idle
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. VICTORY / DEFEAT SCREEN -->
+        <div id="screen-victory" class="absolute inset-0 z-50 hidden flex-col items-center justify-center bg-slate-950/95 p-6">
+            <h2 id="victory-title" class="arcade-font text-2xl md:text-5xl text-yellow-400 mb-2 text-center">JOGADOR 1 VENCEU!</h2>
+            <p id="victory-subtitle" class="text-slate-300 text-sm md:text-base mb-6 text-center italic">"Você precisa derrotar meu Shoryuken para ter uma chance!"</p>
+
+            <div class="flex flex-col md:flex-row items-center gap-8 mb-8">
+                <!-- Winner Portrait -->
+                <div class="flex flex-col items-center bg-gradient-to-b from-yellow-900/40 to-slate-900 border-2 border-yellow-400 rounded-2xl p-4 w-52">
+                    <span class="arcade-font text-xs text-yellow-400 mb-2">VENCEDOR</span>
+                    <img id="winner-portrait" src="" alt="Vencedor" class="w-36 h-44 object-cover rounded-xl border border-yellow-500/40">
+                </div>
+                <!-- Loser Portrait -->
+                <div class="flex flex-col items-center bg-gradient-to-b from-red-950/40 to-slate-900 border-2 border-red-800 rounded-2xl p-4 w-52 opacity-80">
+                    <span class="arcade-font text-xs text-red-400 mb-2">DERROTADO</span>
+                    <img id="loser-portrait" src="" alt="Derrotado" class="w-36 h-44 object-cover rounded-xl border border-red-500/30 grayscale">
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="GameApp.restartMatch()" class="arcade-font bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-xl border-2 border-green-300 text-xs">
+                    REVANCHE
+                </button>
+                <button onclick="GameApp.backToMenu()" class="arcade-font bg-slate-800 hover:bg-slate-700 text-slate-200 px-6 py-3 rounded-xl border border-slate-600 text-xs">
+                    MENU PRINCIPAL
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTROLS MODAL -->
+        <div id="modal-controls" class="absolute inset-0 z-50 hidden items-center justify-center bg-black/80 p-4">
+            <div class="bg-slate-900 border-2 border-blue-500 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-3">
+                    <h3 class="arcade-font text-base md:text-lg text-yellow-400">GUIA DE COMANDOS E MECÂNICAS</h3>
+                    <button onclick="GameApp.toggleControlsModal(false)" class="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 mb-6">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-yellow-400 mb-2">JOGADOR 1 (TECLADO)</h4>
+                        <ul class="space-y-1.5">
+                            <li><strong>W / A / S / D:</strong> Pular, Esquerda, Abaixar, Direita</li>
+                            <li><strong>Defesa:</strong> Segurar direção oposta ao oponente (Em pé, Abaixo ou Pulando)</li>
+                            <li><strong>Socos (Em pé / Abaixo / Pulando):</strong> U (Fraco), I (Médio - GIF), O (Forte / Projétil)</li>
+                            <li><strong>Chutes (Em pé / Abaixo / Pulando):</strong> J (Fraco), K (Médio - GIF), L (Forte / Striker)</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-cyan-400 mb-2">JOGADOR 2 (LOCAL)</h4>
+                        <ul class="space-y-1.5">
+                            <li><strong>Setas (↑ ← ↓ →):</strong> Mover, Pular, Abaixar, Defender</li>
+                            <li><strong>Socos:</strong> Numpad 4, 5, 6 (ou Z, X, C)</li>
+                            <li><strong>Chutes:</strong> Numpad 1, 2, 3 (ou V, B, N)</li>
+                            <li><strong>Tecla 0:</strong> Alternar Modo Debug (Hit-boxes / Damage-boxes)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-blue-950/40 border border-blue-800/50 rounded-xl p-4 text-xs text-blue-200 space-y-1">
+                    <p><strong>Regras de Defesa:</strong> Ataques pulando só podem ser defendidos pulando; em pé defendidos em pé; abaixados defendidos abaixado.</p>
+                    <p><strong>Trava de GIF & Cooldown:</strong> Golpes animados em GIF travam o lutador até o fim da animação e exigem 1s de recarga para repetir o mesmo golpe.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Helper to generate distinct placeholder URLs for every state & 18 attacks
+        function makePlaceholder(bgHex, textHex, label, w = 110, h = 150) {
+            return `https://placehold.co/${w}x${h}/${bgHex}/${textHex}?text=${encodeURIComponent(label)}`;
+        }
+
+        // Stage Backgrounds Database
+        const StageDatabase = {
+            suzaku: {
+                name: 'SUZAKU CASTLE (JAPÃO)',
+                bgUrl: 'https://placehold.co/1280x720/450a0a/fca5a5?text=SUZAKU+CASTLE+-+ROOFTOP+DOJO',
+                floorColor: '#1c1917',
+                floorBorder: '#ef4444'
+            },
+            harbor: {
+                name: 'BATTLE HARBOR (EUA)',
+                bgUrl: 'https://placehold.co/1280x720/172554/93c5fd?text=BATTLE+HARBOR+-+CARRIER+DECK',
+                floorColor: '#0f172a',
+                floorBorder: '#3b82f6'
+            },
+            china: {
+                name: 'BEIJING STREET (CHINA)',
+                bgUrl: 'https://placehold.co/1280x720/064e3b/6ee7b7?text=BEIJING+MARKET+-+FESTIVAL+SQUARE',
+                floorColor: '#14532d',
+                floorBorder: '#10b981'
+            },
+            cyber: {
+                name: 'NEON ARENA (CYBER)',
+                bgUrl: 'https://placehold.co/1280x720/2e1065/f0abfc?text=CYBER+SHADALOO+-+NEON+LAB',
+                floorColor: '#090d16',
+                floorBorder: '#d946ef'
+            }
+        };
+
+        // Complete Character Database with PNG (static) and GIF (animated lock + 1s cooldown) definitions
+        const FighterDatabase = {
+            ryu: {
+                name: 'RYU',
+                color: '#ef4444',
+                winQuote: '"A resposta está no coração da batalha!"',
+                portraits: {
+                    win: makePlaceholder('991b1b', 'fde047', 'RYU VICTORY!\n(WIN SPRITE)', 180, 220),
+                    lose: makePlaceholder('334155', '94a3b8', 'RYU DEFEATED\n(KO SPRITE)', 180, 220)
+                },
+                sprites: {
+                    idle: makePlaceholder('dc2626', 'ffffff', 'RYU\nIDLE (PNG)'),
+                    walk: makePlaceholder('b91c1c', 'fef08a', 'RYU\nWALK (PNG)'),
+                    crouch: makePlaceholder('991b1b', 'ffffff', 'RYU\nCROUCH (PNG)', 110, 100),
+                    jump: makePlaceholder('ef4444', 'ffffff', 'RYU\nJUMP (PNG)'),
+                    guard_stand: makePlaceholder('1d4ed8', 'ffffff', 'RYU\nGUARD STAND'),
+                    guard_crouch: makePlaceholder('1e40af', 'ffffff', 'RYU\nGUARD LOW', 110, 100),
+                    guard_jump: makePlaceholder('2563eb', 'ffffff', 'RYU\nGUARD AIR'),
+                    hit: makePlaceholder('7f1d1d', 'fca5a5', 'RYU\nDAMAGED!')
+                },
+                attacks: {
+                    // 6 STANDING ATTACKS
+                    stand_lp: { name: 'Jab Punch', dmg: 6, duration: 220, isGif: false, hitW: 65, hitH: 30, offsetY: 25, img: makePlaceholder('f87171', '000000', 'STAND LP\n(PNG)') },
+                    stand_mp: { name: 'Solar Plexus [GIF]', dmg: 11, duration: 520, isGif: true, hitW: 80, hitH: 40, offsetY: 30, img: makePlaceholder('f59e0b', '000000', 'STAND MP\n[GIF LOCK]') },
+                    stand_hp: { name: 'HADOKEN (Projétil)', dmg: 0, duration: 420, isGif: false, projectile: true, hitW: 40, hitH: 30, offsetY: 35, img: makePlaceholder('2563eb', 'ffffff', 'HADOKEN!\n(PROJECTILE)') },
+                    stand_lk: { name: 'Low Shin Kick', dmg: 7, duration: 240, isGif: false, hitW: 75, hitH: 30, offsetY: 100, img: makePlaceholder('f87171', '000000', 'STAND LK\n(PNG)') },
+                    stand_mk: { name: 'Tatsumaki [GIF]', dmg: 14, duration: 680, isGif: true, hitW: 100, hitH: 55, offsetY: 40, img: makePlaceholder('d97706', 'ffffff', 'TATSUMAKI\n[GIF LOCK]') },
+                    stand_hk: { name: 'Roundhouse Kick', dmg: 15, duration: 400, isGif: false, hitW: 95, hitH: 40, offsetY: 25, img: makePlaceholder('dc2626', 'ffffff', 'STAND HK\n(PNG)') },
+                    // 6 CROUCHING ATTACKS
+                    crouch_lp: { name: 'Crouch Jab', dmg: 5, duration: 200, isGif: false, hitW: 65, hitH: 25, offsetY: 35, img: makePlaceholder('b91c1c', 'ffffff', 'CROUCH LP\n(PNG)', 110, 100) },
+                    crouch_mp: { name: 'Crouch Straight [GIF]', dmg: 10, duration: 480, isGif: true, hitW: 80, hitH: 30, offsetY: 35, img: makePlaceholder('ea580c', 'ffffff', 'CROUCH MP\n[GIF LOCK]', 110, 100) },
+                    crouch_hp: { name: 'Shoryuken Uppercut', dmg: 16, duration: 450, isGif: false, hitW: 70, hitH: 75, offsetY: -10, img: makePlaceholder('ef4444', 'fef08a', 'SHORYUKEN!\n(PNG)', 110, 110) },
+                    crouch_lk: { name: 'Crouch Short Kick', dmg: 6, duration: 210, isGif: false, hitW: 75, hitH: 25, offsetY: 65, img: makePlaceholder('b91c1c', 'ffffff', 'CROUCH LK\n(PNG)', 110, 100) },
+                    crouch_mk: { name: 'Crouch Forward [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 95, hitH: 28, offsetY: 65, img: makePlaceholder('ea580c', 'ffffff', 'CROUCH MK\n[GIF LOCK]', 110, 100) },
+                    crouch_hk: { name: 'Sweep Kick', dmg: 14, duration: 380, isGif: false, hitW: 105, hitH: 30, offsetY: 65, img: makePlaceholder('991b1b', 'fde047', 'CROUCH HK\nSWEEP', 110, 100) },
+                    // 6 JUMPING ATTACKS
+                    jump_lp: { name: 'Jump Jab', dmg: 6, duration: 250, isGif: false, hitW: 65, hitH: 35, offsetY: 45, img: makePlaceholder('f87171', '000000', 'JUMP LP\n(PNG)') },
+                    jump_mp: { name: 'Jump Double Punch [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 75, hitH: 45, offsetY: 45, img: makePlaceholder('f59e0b', '000000', 'JUMP MP\n[GIF LOCK]') },
+                    jump_hp: { name: 'Jump Heavy Slam', dmg: 15, duration: 360, isGif: false, hitW: 85, hitH: 50, offsetY: 50, img: makePlaceholder('dc2626', 'ffffff', 'JUMP HP\n(PNG)') },
+                    jump_lk: { name: 'Jump Knee', dmg: 7, duration: 250, isGif: false, hitW: 65, hitH: 40, offsetY: 60, img: makePlaceholder('f87171', '000000', 'JUMP LK\n(PNG)') },
+                    jump_mk: { name: 'Jump Crossup [GIF]', dmg: 12, duration: 520, isGif: true, hitW: 85, hitH: 45, offsetY: 60, img: makePlaceholder('d97706', 'ffffff', 'JUMP MK\n[GIF LOCK]') },
+                    jump_hk: { name: 'Jump Dragon Kick', dmg: 16, duration: 380, isGif: false, hitW: 95, hitH: 50, offsetY: 55, img: makePlaceholder('dc2626', 'fde047', 'JUMP HK\n(PNG)') }
+                }
+            },
+            ken: {
+                name: 'KEN',
+                color: '#f97316',
+                winQuote: '"Vamos lá! Esquente um pouco mais essa luta!"',
+                portraits: {
+                    win: makePlaceholder('c2410c', 'fde047', 'KEN VICTORY!\n(WIN SPRITE)', 180, 220),
+                    lose: makePlaceholder('334155', '94a3b8', 'KEN DEFEATED\n(KO SPRITE)', 180, 220)
+                },
+                sprites: {
+                    idle: makePlaceholder('ea580c', 'ffffff', 'KEN\nIDLE (PNG)'),
+                    walk: makePlaceholder('c2410c', 'fef08a', 'KEN\nWALK (PNG)'),
+                    crouch: makePlaceholder('9a3412', 'ffffff', 'KEN\nCROUCH (PNG)', 110, 100),
+                    jump: makePlaceholder('f97316', 'ffffff', 'KEN\nJUMP (PNG)'),
+                    guard_stand: makePlaceholder('1d4ed8', 'ffffff', 'KEN\nGUARD STAND'),
+                    guard_crouch: makePlaceholder('1e40af', 'ffffff', 'KEN\nGUARD LOW', 110, 100),
+                    guard_jump: makePlaceholder('2563eb', 'ffffff', 'KEN\nGUARD AIR'),
+                    hit: makePlaceholder('7c2d12', 'fed7aa', 'KEN\nDAMAGED!')
+                },
+                attacks: {
+                    stand_lp: { name: 'Jab Punch', dmg: 6, duration: 210, isGif: false, hitW: 65, hitH: 30, offsetY: 25, img: makePlaceholder('fb923c', '000000', 'KEN LP\n(PNG)') },
+                    stand_mp: { name: 'Target Combo [GIF]', dmg: 12, duration: 540, isGif: true, hitW: 85, hitH: 40, offsetY: 30, img: makePlaceholder('f59e0b', '000000', 'KEN MP\n[GIF LOCK]') },
+                    stand_hp: { name: 'HADOKEN FOGO (Projétil)', dmg: 0, duration: 400, isGif: false, projectile: true, hitW: 40, hitH: 30, offsetY: 35, img: makePlaceholder('ea580c', 'fde047', 'FIRE HADOKEN\n(PROJECTILE)') },
+                    stand_lk: { name: 'Quick Kick', dmg: 7, duration: 230, isGif: false, hitW: 75, hitH: 30, offsetY: 95, img: makePlaceholder('fb923c', '000000', 'KEN LK\n(PNG)') },
+                    stand_mk: { name: 'Flaming Kick [GIF]', dmg: 14, duration: 620, isGif: true, hitW: 95, hitH: 50, offsetY: 35, img: makePlaceholder('dc2626', 'fde047', 'FLAME KICK\n[GIF LOCK]') },
+                    stand_hk: { name: 'PILAR DE FOGO (Striker)', dmg: 0, duration: 450, isGif: false, strikerType: 'fire_pillar', hitW: 50, hitH: 40, offsetY: 30, img: makePlaceholder('b91c1c', 'fde047', 'INVOKE FIRE\n(STRIKER)') },
+                    crouch_lp: { name: 'Crouch Jab', dmg: 5, duration: 200, isGif: false, hitW: 65, hitH: 25, offsetY: 35, img: makePlaceholder('c2410c', 'ffffff', 'CROUCH LP\n(PNG)', 110, 100) },
+                    crouch_mp: { name: 'Crouch Hook [GIF]', dmg: 10, duration: 480, isGif: true, hitW: 80, hitH: 30, offsetY: 35, img: makePlaceholder('f59e0b', '000000', 'CROUCH MP\n[GIF LOCK]', 110, 100) },
+                    crouch_hp: { name: 'Shoryuken Flame', dmg: 17, duration: 460, isGif: false, hitW: 75, hitH: 80, offsetY: -10, img: makePlaceholder('ef4444', 'fde047', 'FIRE UPPER!\n(PNG)', 110, 110) },
+                    crouch_lk: { name: 'Crouch Short', dmg: 6, duration: 210, isGif: false, hitW: 75, hitH: 25, offsetY: 65, img: makePlaceholder('c2410c', 'ffffff', 'CROUCH LK\n(PNG)', 110, 100) },
+                    crouch_mk: { name: 'Crouch Slide [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 95, hitH: 28, offsetY: 65, img: makePlaceholder('f59e0b', '000000', 'CROUCH MK\n[GIF LOCK]', 110, 100) },
+                    crouch_hk: { name: 'Spinning Sweep', dmg: 14, duration: 380, isGif: false, hitW: 105, hitH: 30, offsetY: 65, img: makePlaceholder('9a3412', 'fde047', 'CROUCH HK\n(PNG)', 110, 100) },
+                    jump_lp: { name: 'Jump Jab', dmg: 6, duration: 250, isGif: false, hitW: 65, hitH: 35, offsetY: 45, img: makePlaceholder('fb923c', '000000', 'JUMP LP\n(PNG)') },
+                    jump_mp: { name: 'Jump Air Combo [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 75, hitH: 45, offsetY: 45, img: makePlaceholder('f59e0b', '000000', 'JUMP MP\n[GIF LOCK]') },
+                    jump_hp: { name: 'Jump Heavy Hook', dmg: 15, duration: 360, isGif: false, hitW: 85, hitH: 50, offsetY: 50, img: makePlaceholder('ea580c', 'ffffff', 'JUMP HP\n(PNG)') },
+                    jump_lk: { name: 'Jump Knee', dmg: 7, duration: 250, isGif: false, hitW: 65, hitH: 40, offsetY: 60, img: makePlaceholder('fb923c', '000000', 'JUMP LK\n(PNG)') },
+                    jump_mk: { name: 'Jump Hurricane [GIF]', dmg: 12, duration: 520, isGif: true, hitW: 85, hitH: 45, offsetY: 60, img: makePlaceholder('d97706', 'ffffff', 'JUMP MK\n[GIF LOCK]') },
+                    jump_hk: { name: 'Jump Flame Kick', dmg: 16, duration: 380, isGif: false, hitW: 95, hitH: 50, offsetY: 55, img: makePlaceholder('ea580c', 'fde047', 'JUMP HK\n(PNG)') }
+                }
+            },
+            chunli: {
+                name: 'CHUN-LI',
+                color: '#06b6d4',
+                winQuote: '"Yatta! Sou a mulher mais forte do mundo!"',
+                portraits: {
+                    win: makePlaceholder('0e7490', 'fde047', 'CHUN-LI WIN!\n(WIN SPRITE)', 180, 220),
+                    lose: makePlaceholder('334155', '94a3b8', 'CHUN-LI KO\n(KO SPRITE)', 180, 220)
+                },
+                sprites: {
+                    idle: makePlaceholder('0891b2', 'ffffff', 'CHUN-LI\nIDLE (PNG)'),
+                    walk: makePlaceholder('0e7490', 'fef08a', 'CHUN-LI\nWALK (PNG)'),
+                    crouch: makePlaceholder('155e75', 'ffffff', 'CHUN-LI\nCROUCH (PNG)', 110, 100),
+                    jump: makePlaceholder('06b6d4', 'ffffff', 'CHUN-LI\nJUMP (PNG)'),
+                    guard_stand: makePlaceholder('1d4ed8', 'ffffff', 'CHUN-LI\nGUARD STAND'),
+                    guard_crouch: makePlaceholder('1e40af', 'ffffff', 'CHUN-LI\nGUARD LOW', 110, 100),
+                    guard_jump: makePlaceholder('2563eb', 'ffffff', 'CHUN-LI\nGUARD AIR'),
+                    hit: makePlaceholder('164e63', 'a5f3fc', 'CHUN-LI\nDAMAGED!')
+                },
+                attacks: {
+                    stand_lp: { name: 'Palm Strike', dmg: 6, duration: 200, isGif: false, hitW: 65, hitH: 30, offsetY: 25, img: makePlaceholder('22d3ee', '000000', 'CHUN LP\n(PNG)') },
+                    stand_mp: { name: 'Double Palm [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 80, hitH: 40, offsetY: 30, img: makePlaceholder('38bdf8', '000000', 'CHUN MP\n[GIF LOCK]') },
+                    stand_hp: { name: 'KIKOKEN (Projétil)', dmg: 0, duration: 400, isGif: false, projectile: true, hitW: 40, hitH: 30, offsetY: 35, img: makePlaceholder('0284c7', 'ffffff', 'KIKOKEN!\n(PROJECTILE)') },
+                    stand_lk: { name: 'Snap Kick', dmg: 7, duration: 220, isGif: false, hitW: 80, hitH: 30, offsetY: 85, img: makePlaceholder('22d3ee', '000000', 'CHUN LK\n(PNG)') },
+                    stand_mk: { name: 'Lightning Legs [GIF]', dmg: 15, duration: 680, isGif: true, hitW: 105, hitH: 55, offsetY: 35, img: makePlaceholder('0ea5e9', 'fde047', 'HYAKURETSU\n[GIF LOCK]') },
+                    stand_hk: { name: 'PAREDE ENERGIA (Striker)', dmg: 0, duration: 450, isGif: false, strikerType: 'energy_wall', hitW: 50, hitH: 40, offsetY: 30, img: makePlaceholder('0369a1', 'fde047', 'ENERGY WALL\n(STRIKER)') },
+                    crouch_lp: { name: 'Crouch Jab', dmg: 5, duration: 190, isGif: false, hitW: 65, hitH: 25, offsetY: 35, img: makePlaceholder('0e7490', 'ffffff', 'CROUCH LP\n(PNG)', 110, 100) },
+                    crouch_mp: { name: 'Crouch Palm [GIF]', dmg: 10, duration: 480, isGif: true, hitW: 80, hitH: 30, offsetY: 35, img: makePlaceholder('38bdf8', '000000', 'CROUCH MP\n[GIF LOCK]', 110, 100) },
+                    crouch_hp: { name: 'Tenshokyaku', dmg: 15, duration: 420, isGif: false, hitW: 75, hitH: 75, offsetY: -10, img: makePlaceholder('06b6d4', 'fde047', 'TENSHOKYAKU\n(PNG)', 110, 110) },
+                    crouch_lk: { name: 'Crouch Quick Kick', dmg: 6, duration: 200, isGif: false, hitW: 80, hitH: 25, offsetY: 65, img: makePlaceholder('0e7490', 'ffffff', 'CROUCH LK\n(PNG)', 110, 100) },
+                    crouch_mk: { name: 'Crouch Slide [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 100, hitH: 28, offsetY: 65, img: makePlaceholder('38bdf8', '000000', 'CROUCH MK\n[GIF LOCK]', 110, 100) },
+                    crouch_hk: { name: 'Spinning Sweep', dmg: 14, duration: 360, isGif: false, hitW: 105, hitH: 30, offsetY: 65, img: makePlaceholder('155e75', 'fde047', 'CROUCH HK\n(PNG)', 110, 100) },
+                    jump_lp: { name: 'Jump Elbow', dmg: 6, duration: 240, isGif: false, hitW: 65, hitH: 35, offsetY: 45, img: makePlaceholder('22d3ee', '000000', 'JUMP LP\n(PNG)') },
+                    jump_mp: { name: 'Jump Double Strike [GIF]', dmg: 11, duration: 500, isGif: true, hitW: 75, hitH: 45, offsetY: 45, img: makePlaceholder('38bdf8', '000000', 'JUMP MP\n[GIF LOCK]') },
+                    jump_hp: { name: 'Jump Heavy Palm', dmg: 14, duration: 350, isGif: false, hitW: 85, hitH: 50, offsetY: 50, img: makePlaceholder('0891b2', 'ffffff', 'JUMP HP\n(PNG)') },
+                    jump_lk: { name: 'Jump Air Kick', dmg: 7, duration: 240, isGif: false, hitW: 70, hitH: 40, offsetY: 60, img: makePlaceholder('22d3ee', '000000', 'JUMP LK\n(PNG)') },
+                    jump_mk: { name: 'Jump Head Stomp [GIF]', dmg: 12, duration: 520, isGif: true, hitW: 85, hitH: 45, offsetY: 60, img: makePlaceholder('0ea5e9', 'fde047', 'JUMP MK\n[GIF LOCK]') },
+                    jump_hk: { name: 'Jump Crescent Kick', dmg: 16, duration: 370, isGif: false, hitW: 100, hitH: 50, offsetY: 55, img: makePlaceholder('0891b2', 'fde047', 'JUMP HK\n(PNG)') }
+                }
+            }
+        };
+
+        // Game state management
+        const GameApp = {
+            mode: 'pvp', // 'pvp' or 'pve'
+            selectedP1: null,
+            selectedP2: null,
+            selectedStage: 'suzaku',
+            selectingPlayer: 1,
+
+            selectStage(stageId) {
+                this.selectedStage = stageId;
+                document.querySelectorAll('.stage-btn').forEach(btn => {
+                    btn.classList.remove('border-yellow-400');
+                    btn.classList.add('border-slate-700');
+                });
+                const activeBtn = document.getElementById(`stage-btn-${stageId}`);
+                if (activeBtn) {
+                    activeBtn.classList.remove('border-slate-700');
+                    activeBtn.classList.add('border-yellow-400');
+                }
+            },
+
+            startMode(mode) {
+                this.mode = mode;
+                this.selectingPlayer = 1;
+                this.selectedP1 = null;
+                this.selectedP2 = null;
+                document.getElementById('screen-menu').classList.add('hidden');
+                const charScreen = document.getElementById('screen-charselect');
+                charScreen.classList.remove('hidden');
+                charScreen.classList.add('flex');
+                document.getElementById('charselect-title').innerText = this.mode === 'pvp' ? 'JOGADOR 1: ESCOLHA SEU LUTADOR' : 'ESCOLHA SEU LUTADOR';
+            },
+
+            selectCharacter(charId) {
+                if (this.selectingPlayer === 1) {
+                    this.selectedP1 = charId;
+                    if (this.mode === 'pve') {
+                        const pool = Object.keys(FighterDatabase).filter(c => c !== charId);
+                        this.selectedP2 = pool[Math.floor(Math.random() * pool.length)];
+                        this.launchBattle();
+                    } else {
+                        this.selectingPlayer = 2;
+                        document.getElementById('charselect-title').innerText = 'JOGADOR 2: ESCOLHA SEU LUTADOR';
+                    }
+                } else {
+                    this.selectedP2 = charId;
+                    this.launchBattle();
+                }
+            },
+
+            launchBattle() {
+                const charScreen = document.getElementById('screen-charselect');
+                charScreen.classList.add('hidden');
+                charScreen.classList.remove('flex');
+
+                const battleScreen = document.getElementById('screen-battle');
+                battleScreen.classList.remove('hidden');
+                battleScreen.classList.add('flex');
+                
+                document.getElementById('p1-name').innerText = FighterDatabase[this.selectedP1].name;
+                document.getElementById('p2-name').innerText = FighterDatabase[this.selectedP2].name + (this.mode === 'pve' ? ' (CPU)' : '');
+
+                // Apply chosen Stage Background
+                const stageData = StageDatabase[this.selectedStage] || StageDatabase.suzaku;
+                document.getElementById('stage-bg-img').src = stageData.bgUrl;
+
+                // Wait one animation frame so flex layout computes full screen dimensions before sizing canvas
+                requestAnimationFrame(() => {
+                    GameEngine.init(this.selectedP1, this.selectedP2, this.mode, this.selectedStage);
+                });
+            },
+
+            backToMenu() {
+                GameEngine.stop();
+                ['screen-victory', 'screen-battle', 'screen-charselect'].forEach(id => {
+                    const el = document.getElementById(id);
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                });
+                document.getElementById('screen-menu').classList.remove('hidden');
+            },
+
+            restartMatch() {
+                const vic = document.getElementById('screen-victory');
+                vic.classList.add('hidden');
+                vic.classList.remove('flex');
+                requestAnimationFrame(() => {
+                    GameEngine.init(this.selectedP1, this.selectedP2, this.mode, this.selectedStage);
+                });
+            },
+
+            toggleControlsModal(show) {
+                const modal = document.getElementById('modal-controls');
+                if (show) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                } else {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            },
+
+            showVictory(winnerSide) {
+                const winnerChar = winnerSide === 'p1' ? this.selectedP1 : this.selectedP2;
+                const loserChar = winnerSide === 'p1' ? this.selectedP2 : this.selectedP1;
+                const winnerData = FighterDatabase[winnerChar];
+                const loserData = FighterDatabase[loserChar];
+
+                const label = winnerSide === 'p1' ? `JOGADOR 1 (${winnerData.name})` : (this.mode === 'pve' ? `CPU (${winnerData.name})` : `JOGADOR 2 (${winnerData.name})`);
+                
+                document.getElementById('victory-title').innerText = `${label} VENCEU!`;
+                document.getElementById('victory-subtitle').innerText = winnerData.winQuote;
+                document.getElementById('winner-portrait').src = winnerData.portraits.win;
+                document.getElementById('loser-portrait').src = loserData.portraits.lose;
+                
+                const vic = document.getElementById('screen-victory');
+                vic.classList.remove('hidden');
+                vic.classList.add('flex');
+            }
+        };
+
+        // Projectile Entity (Only has damage-box / attack-box, disappears on hit, floor, time, or out of screen)
+        class Projectile {
+            constructor(ownerSide, x, y, dir, color) {
+                this.owner = ownerSide;
+                this.x = x;
+                this.y = y;
+                this.w = 46;
+                this.h = 32;
+                this.vx = dir * 9;
+                this.vy = 0;
+                this.damage = 12;
+                this.color = color;
+                this.life = 150; // frames
+                this.active = true;
+            }
+
+            update(canvasW, groundY) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                // Disappears after x time, hitting the floor, or leaving screen bounds
+                if (this.life <= 0 || this.y + this.h >= groundY || this.x < -60 || this.x > canvasW + 60) {
+                    this.active = false;
+                }
+            }
+
+            getDamageBox() {
+                return { x: this.x, y: this.y, w: this.w, h: this.h };
+            }
+        }
+
+        // Striker / "Golpeador" Entity (3rd temporary entity with optional hit-box and/or damage-box)
+        class Striker {
+            constructor(ownerSide, type, x, groundY, dir) {
+                this.owner = ownerSide;
+                this.type = type; // 'fire_pillar' (damage-box only) or 'energy_wall' (hit-box blocker)
+                this.x = x;
+                this.w = type === 'fire_pillar' ? 54 : 36;
+                this.h = type === 'fire_pillar' ? 145 : 130;
+                this.y = groundY - this.h;
+                this.dir = dir;
+                this.life = type === 'fire_pillar' ? 110 : 240;
+                this.hp = type === 'energy_wall' ? 25 : 9999;
+                this.hasHitBox = type === 'energy_wall'; // Can be attacked/destroyed
+                this.hasDamageBox = type === 'fire_pillar'; // Deals damage on contact
+                this.damage = type === 'fire_pillar' ? 16 : 0;
+                this.hitCooldown = 0;
+                this.active = true;
+            }
+
+            update() {
+                this.life--;
+                if (this.hitCooldown > 0) this.hitCooldown--;
+                if (this.life <= 0 || this.hp <= 0) {
+                    this.active = false;
+                }
+            }
+
+            getHitBox() {
+                return this.hasHitBox ? { x: this.x, y: this.y, w: this.w, h: this.h } : null;
+            }
+
+            getDamageBox() {
+                return this.hasDamageBox ? { x: this.x, y: this.y, w: this.w, h: this.h } : null;
+            }
+        }
+
+        // Fighter Entity
+        class Fighter {
+            constructor(x, groundY, isP1, charId, spriteElId, isCpu = false) {
+                this.isP1 = isP1;
+                this.charId = charId;
+                this.data = FighterDatabase[charId];
+                this.spriteEl = document.getElementById(spriteElId);
+                this.isCpu = isCpu;
+
+                this.w = 75;
+                this.standH = 145;
+                this.crouchH = 95;
+                this.h = this.standH;
+
+                this.x = x;
+                this.groundY = groundY;
+                this.y = groundY - this.h;
+                this.vx = 0;
+                this.vy = 0;
+
+                this.hp = 100;
+                this.maxHp = 100;
+                this.facing = isP1 ? 1 : -1;
+
+                this.state = 'idle'; // idle, walk, crouch, jump, attack, guard, hit
+                this.guardType = null; // 'stand', 'crouch', 'jump'
+                this.currentAttack = null;
+                this.attackKey = null;
+                this.hasDealtDamageThisMove = false;
+
+                // GIF animation lock & 1-second reuse cooldown system
+                this.animLockUntil = 0;
+                this.gifCooldowns = {}; // { attackKey: timestampWhenAvailable }
+                this.lastRenderedSpriteUrl = '';
+
+                this.hitStunUntil = 0;
+            }
+
+            isGrounded() {
+                return this.y + this.h >= this.groundY - 1;
+            }
+
+            getDamageBox() {
+                // Hurtbox (where the fighter can be hit)
+                return {
+                    x: this.x + 8,
+                    y: this.y + 6,
+                    w: this.w - 16,
+                    h: this.h - 6
+                };
+            }
+
+            getHitBox() {
+                // Active Attack Box
+                if (this.state !== 'attack' || !this.currentAttack) return null;
+                const atk = this.currentAttack;
+                const customW = (this.isP1 && GameEngine.debugCustomW) ? GameEngine.debugCustomW : atk.hitW;
+                const boxX = this.facing === 1 ? (this.x + this.w - 10) : (this.x - customW + 10);
+                const boxY = this.y + atk.offsetY;
+                return {
+                    x: boxX,
+                    y: boxY,
+                    w: customW,
+                    h: atk.hitH,
+                    stance: atk.stance // 'stand', 'crouch', 'jump'
+                };
+            }
+
+            triggerAttack(stance, buttonIndex) {
+                const now = performance.now();
+                // Cannot execute other moves while a GIF animation is locked
+                if (now < this.animLockUntil || now < this.hitStunUntil) return;
+
+                const btnNames = ['lp', 'mp', 'hp', 'lk', 'mk', 'hk'];
+                const key = `${stance}_${btnNames[buttonIndex]}`;
+                const move = this.data.attacks[key];
+                if (!move) return;
+
+                // Enforce 1-second cooldown before reusing the same GIF move consecutively
+                if (move.isGif && this.gifCooldowns[key] && now < this.gifCooldowns[key]) {
+                    return;
+                }
+
+                this.state = 'attack';
+                this.attackKey = key;
+                this.currentAttack = { ...move, stance };
+                this.hasDealtDamageThisMove = false;
+                this.animLockUntil = now + move.duration;
+
+                if (move.isGif) {
+                    // Must wait at least 1000ms after GIF finishes to reuse it
+                    this.gifCooldowns[key] = now + move.duration + 1000;
+                }
+
+                // Spawn Projectile if attack emits one
+                if (move.projectile) {
+                    const spawnX = this.facing === 1 ? this.x + this.w + 5 : this.x - 50;
+                    const spawnY = this.y + 42;
+                    GameEngine.projectiles.push(new Projectile(this.isP1 ? 'p1' : 'p2', spawnX, spawnY, this.facing, this.data.color));
+                }
+
+                // Summon Striker ("Golpeador") if attack invokes one
+                if (move.strikerType) {
+                    const spawnX = this.facing === 1 ? this.x + this.w + 70 : this.x - 120;
+                    GameEngine.strikers.push(new Striker(this.isP1 ? 'p1' : 'p2', move.strikerType, spawnX, this.groundY, this.facing));
+                }
+            }
+
+            update(opponent, keys, canvasW, groundY) {
+                this.groundY = groundY;
+                const now = performance.now();
+
+                // Face opponent when grounded and idle/walking
+                if (this.isGrounded() && this.state !== 'attack' && now >= this.hitStunUntil) {
+                    this.facing = opponent.x >= this.x ? 1 : -1;
+                }
+
+                // Reset attack state after duration
+                if (this.state === 'attack' && now >= this.animLockUntil) {
+                    this.state = 'idle';
+                    this.currentAttack = null;
+                }
+
+                // Recover from hitstun
+                if (this.state === 'hit' && now >= this.hitStunUntil) {
+                    this.state = 'idle';
+                }
+
+                // Input controls (if not locked in GIF/attack or hitstun)
+                if (this.state !== 'attack' && now >= this.hitStunUntil) {
+                    const left = keys.left;
+                    const right = keys.right;
+                    const up = keys.up;
+                    const down = keys.down;
+
+                    const holdingBack = (this.facing === 1 && left) || (this.facing === -1 && right);
+                    const opponentAttacking = opponent.state === 'attack' || GameEngine.projectiles.some(p => p.owner !== (this.isP1 ? 'p1' : 'p2'));
+
+                    // Determine Guard stance (Standing, Crouching, or Jumping)
+                    this.guardType = null;
+                    if (holdingBack && opponentAttacking) {
+                        if (!this.isGrounded()) this.guardType = 'jump';
+                        else if (down) this.guardType = 'crouch';
+                        else this.guardType = 'stand';
+                    }
+
+                    if (this.isGrounded()) {
+                        if (down) {
+                            this.h = this.crouchH;
+                            this.y = this.groundY - this.h;
+                            this.vx = 0;
+                            this.state = this.guardType === 'crouch' ? 'guard' : 'crouch';
+                        } else {
+                            this.h = this.standH;
+                            this.y = this.groundY - this.h;
+
+                            if (up) {
+                                // Jump straight up, forward, or backward
+                                this.vy = -15.5;
+                                this.vx = left ? -5.2 : (right ? 5.2 : 0);
+                                this.state = 'jump';
+                            } else if (left) {
+                                this.vx = -4.5;
+                                this.state = this.guardType === 'stand' ? 'guard' : 'walk';
+                            } else if (right) {
+                                this.vx = 4.5;
+                                this.state = this.guardType === 'stand' ? 'guard' : 'walk';
+                            } else {
+                                this.vx = 0;
+                                this.state = 'idle';
+                            }
+                        }
+                    } else {
+                        // Airborne
+                        this.state = this.guardType === 'jump' ? 'guard' : 'jump';
+                    }
+                } else {
+                    if (this.isGrounded()) this.vx = 0;
+                }
+
+                // Physics Integration
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (!this.isGrounded()) {
+                    this.vy += 0.72; // Gravity
+                }
+
+                // Floor clamp
+                if (this.y + this.h >= this.groundY) {
+                    this.y = this.groundY - this.h;
+                    this.vy = 0;
+                }
+
+                // Stage wall clamp
+                if (this.x < 15) this.x = 15;
+                if (this.x + this.w > canvasW - 15) this.x = canvasW - 15 - this.w;
+
+                // Sync DOM Sprite Image (PNG / GIF)
+                this.syncSpriteElement();
+            }
+
+            syncSpriteElement() {
+                if (!this.spriteEl) return;
+
+                let targetUrl = this.data.sprites.idle;
+                let isGifMove = false;
+
+                if (this.state === 'attack' && this.currentAttack) {
+                    targetUrl = this.currentAttack.img;
+                    isGifMove = this.currentAttack.isGif;
+                } else if (this.state === 'hit') {
+                    targetUrl = this.data.sprites.hit;
+                } else if (this.state === 'guard') {
+                    if (this.guardType === 'crouch') targetUrl = this.data.sprites.guard_crouch;
+                    else if (this.guardType === 'jump') targetUrl = this.data.sprites.guard_jump;
+                    else targetUrl = this.data.sprites.guard_stand;
+                } else if (this.state === 'crouch') {
+                    targetUrl = this.data.sprites.crouch;
+                } else if (this.state === 'jump') {
+                    targetUrl = this.data.sprites.jump;
+                } else if (this.state === 'walk') {
+                    targetUrl = this.data.sprites.walk;
+                }
+
+                // Force reload cache-buster on GIF moves so animated GIF plays from frame 1
+                if (this.lastRenderedSpriteUrl !== targetUrl) {
+                    this.lastRenderedSpriteUrl = targetUrl;
+                    this.spriteEl.src = isGifMove ? `${targetUrl}&t=${Date.now()}` : targetUrl;
+                }
+
+                // Position & flip sprite smoothly
+                const renderW = this.state === 'attack' ? this.w + 26 : this.w + 14;
+                const renderX = this.facing === 1 ? this.x - 5 : this.x - (renderW - this.w - 5);
+                this.spriteEl.style.width = `${renderW}px`;
+                this.spriteEl.style.height = `${this.h}px`;
+                this.spriteEl.style.transform = `translate3d(${renderX}px, ${this.y}px, 0) scaleX(${this.facing})`;
+            }
+        }
+
+        // Main Game Engine Controller
+        const GameEngine = {
+            canvas: null,
+            ctx: null,
+            animationId: null,
+            isrunning: false,
+            debugMode: false,
+            debugCustomW: null,
+            mode: 'pvp',
+            stageId: 'suzaku',
+
+            p1: null,
+            p2: null,
+            projectiles: [],
+            strikers: [],
+
+            keysDown: {},
+            roundTimer: 99,
+            timerInterval: null,
+            bannerTimeout: null,
+
+            resizeCanvas() {
+                if (!this.canvas || !this.canvas.parentElement) return;
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width || window.innerWidth;
+                this.canvas.height = rect.height || (window.innerHeight - 120);
+            },
+
+            init(p1Char, p2Char, mode, stageId = 'suzaku') {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.mode = mode;
+                this.stageId = stageId;
+
+                this.resizeCanvas();
+                const groundY = this.canvas.height - 60;
+
+                // Initialize Fighters with DOM sprite element bindings
+                this.p1 = new Fighter(160, groundY, true, p1Char, 'p1-sprite', false);
+                this.p2 = new Fighter(this.canvas.width - 235, groundY, false, p2Char, 'p2-sprite', mode === 'pve');
+
+                this.projectiles = [];
+                this.strikers = [];
+                this.roundTimer = 99;
+                this.isrunning = true;
+                this.keysDown = {};
+
+                document.getElementById('battle-timer').innerText = '99';
+                this.showBanner('ROUND 1 - FIGHT!');
+
+                window.removeEventListener('keydown', this.handleKeyDown);
+                window.removeEventListener('keyup', this.handleKeyUp);
+                window.removeEventListener('resize', this.handleResize);
+                window.addEventListener('keydown', this.handleKeyDown);
+                window.addEventListener('keyup', this.handleKeyUp);
+                window.addEventListener('resize', this.handleResize);
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                this.timerInterval = setInterval(() => {
+                    if (!this.isrunning) return;
+                    this.roundTimer--;
+                    document.getElementById('battle-timer').innerText = this.roundTimer;
+                    if (this.roundTimer <= 0) {
+                        this.endRoundTimer();
+                    }
+                }, 1000);
+
+                if (this.animationId) cancelAnimationFrame(this.animationId);
+                this.animate();
+            },
+
+            handleResize() {
+                GameEngine.resizeCanvas();
+            },
+
+            stop() {
+                this.isrunning = false;
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                window.removeEventListener('keydown', this.handleKeyDown);
+                window.removeEventListener('keyup', this.handleKeyUp);
+                window.removeEventListener('resize', this.handleResize);
+                if (this.animationId) cancelAnimationFrame(this.animationId);
+            },
+
+            showBanner(text) {
+                const banner = document.getElementById('round-banner');
+                document.getElementById('round-banner-text').innerText = text;
+                banner.style.opacity = '1';
+                if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
+                this.bannerTimeout = setTimeout(() => {
+                    banner.style.opacity = '0';
+                }, 1400);
+            },
+
+            toggleDebug() {
+                this.debugMode = !this.debugMode;
+                document.getElementById('btn-debug-toggle').innerText = `DEBUG BOXES [0]: ${this.debugMode ? 'ON' : 'OFF'}`;
+                const panel = document.getElementById('debug-panel');
+                if (this.debugMode) panel.classList.remove('hidden');
+                else panel.classList.add('hidden');
+            },
+
+            updateDebugHitbox(val) {
+                this.debugCustomW = parseInt(val, 10);
+            },
+
+            handleKeyDown(e) {
+                const code = e.code;
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) {
+                    e.preventDefault();
+                }
+
+                if (code === 'Digit0' || code === 'Numpad0') {
+                    GameEngine.toggleDebug();
+                    return;
+                }
+
+                if (GameEngine.keysDown[code]) return; // Prevent auto-repeat triggers
+                GameEngine.keysDown[code] = true;
+
+                if (!GameEngine.isrunning) return;
+
+                // P1 Attack Keys (6 Attacks per stance: U,I,O = LP,MP,HP | J,K,L = LK,MK,HK)
+                const p1AttackMap = {
+                    'KeyU': 0, 'KeyI': 1, 'KeyO': 2,
+                    'KeyJ': 3, 'KeyK': 4, 'KeyL': 5
+                };
+                if (code in p1AttackMap) {
+                    const f = GameEngine.p1;
+                    const stance = !f.isGrounded() ? 'jump' : (GameEngine.keysDown['KeyS'] ? 'crouch' : 'stand');
+                    f.triggerAttack(stance, p1AttackMap[code]);
+                }
+
+                // P2 Attack Keys (Local 2P)
+                if (GameEngine.mode === 'pvp') {
+                    const p2AttackMap = {
+                        'Numpad4': 0, 'Numpad5': 1, 'Numpad6': 2,
+                        'Numpad1': 3, 'Numpad2': 4, 'Numpad3': 5,
+                        'KeyZ': 0, 'KeyX': 1, 'KeyC': 2,
+                        'KeyV': 3, 'KeyB': 4, 'KeyN': 5
+                    };
+                    if (code in p2AttackMap) {
+                        const f = GameEngine.p2;
+                        const stance = !f.isGrounded() ? 'jump' : (GameEngine.keysDown['ArrowDown'] ? 'crouch' : 'stand');
+                        f.triggerAttack(stance, p2AttackMap[code]);
+                    }
+                }
+            },
+
+            handleKeyUp(e) {
+                delete GameEngine.keysDown[e.code];
+            },
+
+            getCpuInputs() {
+                const f = this.p2;
+                const opp = this.p1;
+                const dist = Math.abs(f.x - opp.x);
+                const keys = { left: false, right: false, up: false, down: false };
+
+                if (Math.random() < 0.035 && dist < 130) {
+                    const stance = !f.isGrounded() ? 'jump' : (Math.random() < 0.35 ? 'crouch' : 'stand');
+                    f.triggerAttack(stance, Math.floor(Math.random() * 6));
+                } else if (Math.random() < 0.015 && dist > 230) {
+                    f.triggerAttack('stand', Math.random() < 0.5 ? 2 : 5); // Projectile or Striker
+                }
+
+                if (dist > 115) {
+                    if (opp.x < f.x) keys.left = true;
+                    else keys.right = true;
+                } else if (opp.state === 'attack' && Math.random() < 0.65) {
+                    // CPU Guards appropriately
+                    if (opp.x < f.x) keys.right = true;
+                    else keys.left = true;
+                    if (opp.currentAttack?.stance === 'crouch') keys.down = true;
+                }
+
+                return keys;
+            },
+
+            boxesIntersect(a, b) {
+                if (!a || !b) return false;
+                return a.x < b.x + b.w &&
+                       a.x + a.w > b.x &&
+                       a.y < b.y + b.h &&
+                       a.y + a.h > b.y;
+            },
+
+            checkCombatCollisions() {
+                // 1. Melee Attack Collisions (P1 -> P2 and P2 -> P1)
+                [
+                    { attacker: this.p1, defender: this.p2, side: 'p1' },
+                    { attacker: this.p2, defender: this.p1, side: 'p2' }
+                ].forEach(({ attacker, defender, side }) => {
+                    if (attacker.state === 'attack' && attacker.currentAttack && !attacker.hasDealtDamageThisMove) {
+                        const hitBox = attacker.getHitBox();
+                        if (!hitBox) return;
+
+                        // Check if attack hits an enemy Energy Wall Striker first
+                        for (const st of this.strikers) {
+                            if (st.active && st.owner !== side && st.hasHitBox) {
+                                if (this.boxesIntersect(hitBox, st.getHitBox())) {
+                                    st.hp -= attacker.currentAttack.dmg || 10;
+                                    attacker.hasDealtDamageThisMove = true;
+                                    return;
+                                }
+                            }
+                        }
+
+                        // Check Defender Damage-Box
+                        const dmgBox = defender.getDamageBox();
+                        if (this.boxesIntersect(hitBox, dmgBox)) {
+                            attacker.hasDealtDamageThisMove = true;
+                            const atkStance = hitBox.stance; // 'stand', 'crouch', or 'jump'
+
+                            // Strict Defense Rule:
+                            // Jump attacks blocked only by jump guard; Stand by stand guard; Crouch by crouch guard.
+                            const isBlocked = defender.state === 'guard' && defender.guardType === atkStance;
+                            const finalDamage = isBlocked ? Math.max(1, Math.floor(attacker.currentAttack.dmg * 0.15)) : attacker.currentAttack.dmg;
+
+                            this.applyDamage(defender, finalDamage, isBlocked);
+                        }
+                    }
+                });
+
+                // 2. Projectile Collisions
+                for (const proj of this.projectiles) {
+                    if (!proj.active) continue;
+                    const pBox = proj.getDamageBox();
+
+                    // Check Striker Wall Blockers
+                    for (const st of this.strikers) {
+                        if (st.active && st.owner !== proj.owner && st.hasHitBox) {
+                            if (this.boxesIntersect(pBox, st.getHitBox())) {
+                                st.hp -= proj.damage;
+                                proj.active = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!proj.active) continue;
+
+                    const target = proj.owner === 'p1' ? this.p2 : this.p1;
+                    if (this.boxesIntersect(pBox, target.getDamageBox())) {
+                        proj.active = false;
+                        const isBlocked = target.state === 'guard' && target.guardType === 'stand';
+                        this.applyDamage(target, isBlocked ? 2 : proj.damage, isBlocked);
+                    }
+                }
+
+                // 3. Striker Damage-Box Collisions (e.g. Ken's Fire Pillar)
+                for (const st of this.strikers) {
+                    if (!st.active || !st.hasDamageBox || st.hitCooldown > 0) continue;
+                    const target = st.owner === 'p1' ? this.p2 : this.p1;
+                    if (this.boxesIntersect(st.getDamageBox(), target.getDamageBox())) {
+                        st.hitCooldown = 35; // Prevent instant multi-frame KO
+                        const isBlocked = target.state === 'guard' && target.guardType === 'stand';
+                        this.applyDamage(target, isBlocked ? 2 : st.damage, isBlocked);
+                    }
+                }
+            },
+
+            applyDamage(target, amount, isBlocked) {
+                target.hp = Math.max(0, target.hp - amount);
+                if (!isBlocked) {
+                    target.state = 'hit';
+                    target.hitStunUntil = performance.now() + 260;
+                    target.x += target.facing * -14; // Knockback
+                }
+                this.updateHud();
+
+                if (target.hp <= 0 && this.isrunning) {
+                    this.isrunning = false;
+                    this.showBanner('K.O.!');
+                    setTimeout(() => {
+                        GameApp.showVictory(target.isP1 ? 'p2' : 'p1');
+                    }, 1200);
+                }
+            },
+
+            endRoundTimer() {
+                this.isrunning = false;
+                this.showBanner('TIME OVER!');
+                setTimeout(() => {
+                    const winner = this.p1.hp >= this.p2.hp ? 'p1' : 'p2';
+                    GameApp.showVictory(winner);
+                }, 1200);
+            },
+
+            updateHud() {
+                document.getElementById('p1-hp-bar').style.width = `${(this.p1.hp / this.p1.maxHp) * 100}%`;
+                document.getElementById('p2-hp-bar').style.width = `${(this.p2.hp / this.p2.maxHp) * 100}%`;
+
+                document.getElementById('p1-state-badge').innerText = this.p1.state === 'attack' && this.p1.currentAttack
+                    ? this.p1.currentAttack.name.toUpperCase()
+                    : this.p1.state.toUpperCase();
+
+                document.getElementById('p2-state-badge').innerText = this.p2.state === 'attack' && this.p2.currentAttack
+                    ? this.p2.currentAttack.name.toUpperCase()
+                    : this.p2.state.toUpperCase();
+
+                // Display active GIF Cooldown indicators
+                const now = performance.now();
+                const p1Cd = Object.entries(this.p1.gifCooldowns).find(([, until]) => until > now);
+                document.getElementById('p1-cooldown-indicator').innerText = p1Cd
+                    ? `GIF RECARGA (${p1Cd[0].toUpperCase()}): ${((p1Cd[1] - now) / 1000).toFixed(1)}s`
+                    : '';
+
+                const p2Cd = Object.entries(this.p2.gifCooldowns).find(([, until]) => until > now);
+                document.getElementById('p2-cooldown-indicator').innerText = p2Cd
+                    ? `GIF RECARGA (${p2Cd[0].toUpperCase()}): ${((p2Cd[1] - now) / 1000).toFixed(1)}s`
+                    : '';
+
+                if (this.debugMode) {
+                    document.getElementById('dbg-readout').innerText =
+                        `P1: (${Math.round(this.p1.x)},${Math.round(this.p1.y)}) [${this.p1.state}] | P2: (${Math.round(this.p2.x)},${Math.round(this.p2.y)}) [${this.p2.state}]`;
+                }
+            },
+
+            animate() {
+                if (!this.isrunning) return;
+                this.animationId = requestAnimationFrame(() => this.animate());
+
+                const groundY = this.canvas.height - 60;
+
+                const p1Keys = {
+                    left: !!this.keysDown['KeyA'],
+                    right: !!this.keysDown['KeyD'],
+                    up: !!this.keysDown['KeyW'],
+                    down: !!this.keysDown['KeyS']
+                };
+
+                const p2Keys = this.mode === 'pve' ? this.getCpuInputs() : {
+                    left: !!this.keysDown['ArrowLeft'],
+                    right: !!this.keysDown['ArrowRight'],
+                    up: !!this.keysDown['ArrowUp'],
+                    down: !!this.keysDown['ArrowDown']
+                };
+
+                this.p1.update(this.p2, p1Keys, this.canvas.width, groundY);
+                this.p2.update(this.p1, p2Keys, this.canvas.width, groundY);
+
+                // Update Projectiles
+                this.projectiles.forEach(p => p.update(this.canvas.width, groundY));
+                this.projectiles = this.projectiles.filter(p => p.active);
+
+                // Update Strikers ("Golpeadores")
+                this.strikers.forEach(s => s.update());
+                this.strikers = this.strikers.filter(s => s.active);
+
+                this.checkCombatCollisions();
+                this.updateHud();
+                this.render(groundY);
+            },
+
+            render(groundY) {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const stageData = StageDatabase[this.stageId] || StageDatabase.suzaku;
+
+                // Arcade Dojo Floor & Stage Border
+                ctx.fillStyle = stageData.floorColor;
+                ctx.fillRect(0, groundY, this.canvas.width, this.canvas.height - groundY);
+                ctx.fillStyle = stageData.floorBorder;
+                ctx.fillRect(0, groundY, this.canvas.width, 4);
+
+                // Draw Projectiles (Energy Fireballs)
+                for (const proj of this.projectiles) {
+                    ctx.save();
+                    ctx.fillStyle = proj.color;
+                    ctx.shadowColor = proj.color;
+                    ctx.shadowBlur = 14;
+                    ctx.beginPath();
+                    ctx.ellipse(proj.x + proj.w / 2, proj.y + proj.h / 2, proj.w / 2, proj.h / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(proj.x + proj.w / 2, proj.y + proj.h / 2, proj.w / 4, proj.h / 4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+
+                    if (this.debugMode) {
+                        this.drawDebugBox(ctx, proj.getDamageBox(), 'rgba(239, 68, 68, 0.45)', '#ef4444', 'PROJ DMG-BOX');
+                    }
+                }
+
+                // Draw Strikers ("Golpeadores")
+                for (const st of this.strikers) {
+                    ctx.save();
+                    if (st.type === 'fire_pillar') {
+                        const grad = ctx.createLinearGradient(st.x, st.y + st.h, st.x, st.y);
+                        grad.addColorStop(0, '#dc2626');
+                        grad.addColorStop(0.5, '#f97316');
+                        grad.addColorStop(1, '#fde047');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(st.x, st.y, st.w, st.h);
+                    } else {
+                        ctx.fillStyle = 'rgba(6, 182, 212, 0.55)';
+                        ctx.strokeStyle = '#67e8f9';
+                        ctx.lineWidth = 3;
+                        ctx.fillRect(st.x, st.y, st.w, st.h);
+                        ctx.strokeRect(st.x, st.y, st.w, st.h);
+                    }
+                    ctx.restore();
+
+                    if (this.debugMode) {
+                        if (st.getHitBox()) this.drawDebugBox(ctx, st.getHitBox(), 'rgba(59, 130, 246, 0.4)', '#3b82f6', 'STRIKER HIT-BOX');
+                        if (st.getDamageBox()) this.drawDebugBox(ctx, st.getDamageBox(), 'rgba(239, 68, 68, 0.45)', '#ef4444', 'STRIKER DMG-BOX');
+                    }
+                }
+
+                // Debug Mode: Render Fighter Damage-Boxes (Blue) & Hit-Boxes (Red)
+                if (this.debugMode) {
+                    [this.p1, this.p2].forEach(f => {
+                        this.drawDebugBox(ctx, f.getDamageBox(), 'rgba(59, 130, 246, 0.35)', '#3b82f6', 'DAMAGE-BOX');
+                        const hBox = f.getHitBox();
+                        if (hBox) {
+                            this.drawDebugBox(ctx, hBox, 'rgba(239, 68, 68, 0.45)', '#ef4444', `HIT-BOX (${hBox.stance.toUpperCase()})`);
+                        }
+                    });
+                }
+            },
+
+            drawDebugBox(ctx, box, fill, stroke, label) {
+                if (!box) return;
+                ctx.save();
+                ctx.fillStyle = fill;
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = 2;
+                ctx.fillRect(box.x, box.y, box.w, box.h);
+                ctx.strokeRect(box.x, box.y, box.w, box.h);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px monospace';
+                ctx.fillText(label, box.x + 2, box.y - 3);
+                ctx.restore();
+            }
+        };
+    </script>
+</body>
+</html>
